@@ -13,13 +13,13 @@ import requests
 from PIL import Image
 import random
 import regex as re
-
 import torch
-from transformers import AutoProcessor, LlavaOnevisionForConditionalGeneration
-from torchvision.ops import box_iou
-import tqdm
 import sys
 
+from transformers import Qwen2_5_VLForConditionalGeneration, AutoTokenizer, AutoProcessor
+from qwen_vl_utils import process_vision_info
+from torchvision.ops import box_iou
+import tqdm
 
 def get_device(is_ddp):
     if is_ddp:
@@ -141,57 +141,50 @@ def fix_seed(seed: int) -> None:
     torch.use_deterministic_algorithms = True
     
     
-def llava_onevision_conversation(caption):
+def qwen_vl_conversation(caption,image):
     conversation = [
-        {
-
-        "role": "system",
-        "content": [
-            {"type": "text", "text": "You are a helpful assistant."},
-            ],
-        },
         {
             "role": "user",
             "content": [
-                {"type": "text", "text": f"Provide the bounding box coordinate of the region this sentence describes. \"{caption}\""},
-                {"type": "image"},
+
+                # {"type": "text", "text": "Please output bbox coordinates and names of every object in this image in JSON format"},
+                {"type": "text", "text": f"Locate \"{caption}\", report the bbox coordinates in JSON format."},
+                {
+                    "type": "image",
+                    "image": image,
+                },
             ],
         }
     ]
-    
     return conversation
-
-def make_prompt_list(caption_list,processor):
-    prompt_list = []
-    for caption in caption_list:
-        conversation = llava_onevision_conversation(caption)
-        prompt = processor.apply_chat_template(conversation, add_generation_prompt=True)
-        prompt_list.append(prompt)
-    return prompt_list
-
 
 def make_inputs(caption_list,image_list,processor):
     conversation_list = []
     prompt_list = []
     for caption,image in zip(caption_list,image_list):
-        conversation = llava_onevision_conversation(caption)
+        conversation = qwen_vl_conversation(caption,image)
         conversation_list.append(conversation)
         prompt = processor.apply_chat_template(conversation, add_generation_prompt=True)
         prompt_list.append(prompt)
-
-    prompt_list = make_prompt_list(caption_list,processor)
-    inputs = processor(images=image_list, text=prompt_list, return_tensors='pt',padding=True,truncation=True)
-    
+        
+    image_inputs, video_inputs = process_vision_info(conversation_list)
+    inputs = processor(
+        text=prompt_list,
+        images=image_inputs,
+        videos=video_inputs,
+        padding=True,
+        return_tensors="pt",
+    )
     model_image_width_height_list = []
-    for image in image_list:
+    for image in image_inputs:
         model_image_width_height = (image.size[0], image.size[1])
         model_image_width_height_list.append(model_image_width_height)
     return inputs, model_image_width_height_list
 
-def extract_bbox_from_text(ans):
-    pattern = re.compile(r'\[(((0|1)\.(\d){3}\,){3}((0|1)\.(\d){3}))\]')
-    match_list = pattern.findall(ans)
 
+def extract_bbox_from_text(ans):
+    pattern = re.compile(r'\[((\d+,\s*){3}(\d+\s*))\]')
+    match_list = pattern.findall(ans)
     if len(match_list) > 0:
         answer = [list(map(float,match[0].split(","))) for match in match_list]
     else:
@@ -217,11 +210,13 @@ def bbox_absolute_to_relative(absolute_bbox, image_width_height):
     return relative_bbox
 
 def get_bbox_from_output(output_text, model_image_width_height):
-    relative_bbox = extract_bbox_from_text(output_text)
-    if relative_bbox == "FAILED":
+    absolute_bbox = extract_bbox_from_text(output_text)
+    if absolute_bbox == "FAILED":
         return False
     else:
-        return relative_bbox[0]
+        absolute_bbox = absolute_bbox[0]
+        relative_bbox = bbox_absolute_to_relative(absolute_bbox, model_image_width_height)
+        return relative_bbox
 
 def calculate_iou(bbox1, bbox2):
     """
@@ -292,17 +287,17 @@ fix_seed(0)
 device = get_device(is_ddp=False)
 
 model_root_dir = "/home/omote/local-share-data_ssd/huggingface_model_weights"
-model_id = os.path.join(model_root_dir, "llava-hf/llava-onevision-qwen2-7b-si-hf")
+model_id = os.path.join(model_root_dir, "Qwen/Qwen2.5-VL-7B-Instruct")
 cache_dir = "/home/omote/local-share-data_ssd/huggingface_cache"
 
 processor = AutoProcessor.from_pretrained(model_id, cache_dir=cache_dir)
-processor.tokenizer.padding_side = "left"
-
-model = LlavaOnevisionForConditionalGeneration.from_pretrained(
+# default: Load the model on the available device(s)
+model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
     model_id, cache_dir=cache_dir, torch_dtype=torch.bfloat16
 )
-model.eval()
+
 model.to(device)
+model.eval()
 
 dataset_root_dir = "/home/omote/local-share-data_ssd/huggingface_dataset"
 image_folder_root = "/home/omote/local-share-data/mscoco2014/train2014"
@@ -326,9 +321,8 @@ eval_dataloader = DataLoader(
         drop_last=False,
 )
 
-
-model_output_jsonl_path = os.path.join("./",f"llava_onevision_refcoco_{dataset_key}.jsonl")
-score_json_path = os.path.join("./",f"llava_onevision_refcoco_score_{dataset_key}.json")
+model_output_jsonl_path = os.path.join("./",f"qwen_vl_refcoco_{dataset_key}.jsonl")
+score_json_path = os.path.join("./",f"qwen_vl_refcoco_score_{dataset_key}.json")
 create_jsonl_file(model_output_jsonl_path)
 
 iou_list = []
