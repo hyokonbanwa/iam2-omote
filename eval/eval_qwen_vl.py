@@ -148,7 +148,8 @@ def qwen_vl_conversation(caption,image):
             "content": [
 
                 # {"type": "text", "text": "Please output bbox coordinates and names of every object in this image in JSON format"},
-                {"type": "text", "text": f"Locate \"{caption}\", report the bbox coordinates in JSON format."},
+                # {"type": "text", "text": f"Locate \"{caption}\", report the bbox coordinates in JSON format."},
+                {"type": "text", "text": f"Locate the region that corresponds to the following sentence.\"{caption}\" Report the bbox coordinates in JSON format."},
                 {
                     "type": "image",
                     "image": image,
