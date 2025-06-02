@@ -119,7 +119,17 @@ def calculate_score(correct_data, generated_data,args,current_date):
     }
     return output_data
 
-def main(args,current_date):
+def main(args):
+    base_name = os.path.basename(__file__)
+    current_date = datetime.datetime.now().strftime('%Y-%m-%dT%H_%M_%S')
+    
+    
+    if args.output_path is None:
+        generated_json_folder = os.path.dirname(args.generated_json)
+        output_path = os.path.join(generated_json_folder,f"{base_name.split('.')[0]}.json")
+    else:
+        output_path = args.output_path
+    
     print("Loading JSON data...")
     correct_json_path = args.gt_json
     correct_data = load_json(correct_json_path)
@@ -133,24 +143,18 @@ def main(args,current_date):
     generated_data = sort_list_of_dicts(generated_data, "id")
 
     output_data = calculate_score(correct_data, generated_data,args,current_date)
-    print(f"Saving sorted JSON data to \"{args.output_path}\"...")
-    os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
+    print(f"Saving sorted JSON data to \"{output_path}\"...")
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
      # Save the output data to the specified output path
-    save_json(args.output_path, output_data)
+    save_json(output_path, output_data)
 
 if __name__ == "__main__":
     
     gt_json_path = "/data_ssd/visa/visa-test_llava-onevision.json"
 
-    base_name = os.path.basename(__file__)
-    current_date = datetime.datetime.now().strftime('%Y-%m-%dT%H_%M_%S')
-    output_path = f"eval_result/{base_name.split('.')[0]}/{base_name.split('.')[0]}_{current_date}.json"
-
     parser = argparse.ArgumentParser(description="Utility functions for JSON handling and sorting.")
     parser.add_argument("--generated_json", type=str, help='Path to the generated JSON file to load or save.')
-    parser.add_argument("--output_path", type=str, help='Path to save the sorted JSON file.',default=output_path)
+    parser.add_argument("--output_path", type=str, help='Path to save the sorted JSON file.',default=None)
     parser.add_argument("--gt_json", type=str, help='Path to the ground truth JSON file to load for sorting.', default=gt_json_path )
     args = parser.parse_args()
-    main(args,current_date)
-
-
+    main(args)

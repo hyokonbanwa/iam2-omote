@@ -58,23 +58,40 @@ def calculate_score(correct_data, generated_data,args,current_date):
 
     for i in tqdm(range(total_data_num)):
         assert correct_data[i]["id"] == generated_data[i]["id"], f"ID mismatch at index {i}."
-        if correct_data[i]["conversations"][-1]["value"] == "None":
+        if correct_data[i]["id"].split('/')[-2] == "Normal":
             normal_data_num += 1
         else:
             anomaly_data_num += 1
+            
+        A_is_annormaly_text = "A: Yes. B: No."
+        B_is_annormaly_text = "A: No. B: Yes."
         
-        if generated_data[i]["conversations"][-1]["value"] != "None":
-            model_predict_anomaly_data_num += 1
+        if A_is_annormaly_text in generated_data[i]["conversations"][0]["value"]:
+            if generated_data[i]["conversations"][-1]["value"] == "A" or generated_data[i]["conversations"][-1]["value"] == "A: Yes.":
+                model_predict_anomaly_data_num += 1
+            else:
+                model_predict_normal_data_num += 1
+            #正常画像の検出判定
+            if (correct_data[i]["conversations"][-1]["value"] == "B") and  (generated_data[i]["conversations"][-1]["value"] == "B" or generated_data[i]["conversations"][-1]["value"] == "B: No."):
+                matched_data_num += 1
+            # 異常画像の検出判定
+            elif (correct_data[i]["conversations"][-1]["value"] =="A") and (generated_data[i]["conversations"][-1]["value"] =="A" or generated_data[i]["conversations"][-1]["value"] =="A: Yes."):
+                matched_data_num += 1
+                anomaly_matched_data_num += 1
+        elif B_is_annormaly_text in generated_data[i]["conversations"][0]["value"]:
+            if generated_data[i]["conversations"][-1]["value"] == "B" or generated_data[i]["conversations"][-1]["value"] == "B: Yes.":
+                model_predict_anomaly_data_num += 1
+            else:
+                model_predict_normal_data_num += 1
+            #正常画像の検出判定
+            if (correct_data[i]["conversations"][-1]["value"] == "A") and  (generated_data[i]["conversations"][-1]["value"] == "A" or generated_data[i]["conversations"][-1]["value"] == "A: No."):
+                matched_data_num += 1
+            # 異常画像の検出判定
+            elif (correct_data[i]["conversations"][-1]["value"] =="B") and (generated_data[i]["conversations"][-1]["value"] =="B" or generated_data[i]["conversations"][-1]["value"] =="B: Yes."):
+                matched_data_num += 1
+                anomaly_matched_data_num += 1
         else:
-            model_predict_normal_data_num += 1
-
-        #正常画像の検出判定
-        if (correct_data[i]["conversations"][-1]["value"] == "None") and  (generated_data[i]["conversations"][-1]["value"] == "None" or generated_data[i]["conversations"][-1]["value"] == "None."):
-            matched_data_num += 1
-        # 異常画像の検出判定
-        elif (correct_data[i]["conversations"][-1]["value"] != "None") and (generated_data[i]["conversations"][-1]["value"] != "None" and generated_data[i]["conversations"][-1]["value"] != "None."):
-            matched_data_num += 1
-            anomaly_matched_data_num += 1
+            raise ValueError(f"Unexpected conversation value in generated data at index {i}: {generated_data[i]['conversations'][0]['value']}")
 
     print("-" * 50)
     print(f"Total data number: {total_data_num}")
@@ -151,7 +168,7 @@ def main(args):
 
 if __name__ == "__main__":
     
-    gt_json_path = "/data_ssd/mvtec_ad/mvtec-test_llava-onevision.json"
+    gt_json_path = "/data_ssd/visa/visa-test_multiple-select_llava-onevision.json"
 
     parser = argparse.ArgumentParser(description="Utility functions for JSON handling and sorting.")
     parser.add_argument("--generated_json", type=str, help='Path to the generated JSON file to load or save.')

@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import os
 from ultralytics.utils.downloads import download
 
 # Download labels
@@ -14,4 +14,4 @@ urls = [
     "http://images.cocodataset.org/zips/val2017.zip",  # 1G, 5k images
     "http://images.cocodataset.org/zips/test2017.zip",  # 7G, 41k images (optional)
 ]
-download(urls, dir=dir / "images", threads=3)
+download(urls, dir=os.path.join(dir,"images"), threads=3)
