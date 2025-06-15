@@ -83,7 +83,7 @@ def main():
     ]
 
     for script in scripts:
-        script_path = os.path.join("helper", script)
+        script_path = os.path.join(os.path.dirname(__file__),"helper", script)
         print(f"Executing: {script_path} --answers_json_path {output_jsonl_path}")
         subprocess.run(["python", script_path, "--answers_json_path", output_jsonl_path], check=True)
 
