@@ -63,7 +63,7 @@ def calculate_score(correct_data, generated_data,args,current_date):
         else:
             anomaly_data_num += 1
         
-        if generated_data[i]["conversations"][-1]["value"] != "None":
+        if generated_data[i]["conversations"][-1]["value"] != "None" and generated_data[i]["conversations"][-1]["value"] != "None.":
             model_predict_anomaly_data_num += 1
         else:
             model_predict_normal_data_num += 1

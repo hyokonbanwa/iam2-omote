@@ -2,7 +2,7 @@ import os
 import zipfile
 from pathlib import Path
 
-def unzip_all(source_dir, target_dir):
+def unzip_all(source_dir, target_dir, use_zip_stem):
     source_dir = Path(source_dir).resolve()
     target_dir = Path(target_dir).resolve()
     if not source_dir.is_dir():
@@ -11,8 +11,14 @@ def unzip_all(source_dir, target_dir):
     for zip_path in source_dir.rglob('*.zip'):
         relative_path = zip_path.relative_to(source_dir)  # source_dirからの相対パス
         zip_stem = zip_path.stem  # 拡張子なしファイル名
-        output_dir = target_dir / zip_stem
-
+        
+        if use_zip_stem == 'true':
+            # ZIPファイル名を使用して出力ディレクトリを作成
+            output_dir = target_dir / zip_stem
+        elif use_zip_stem == 'false':
+            output_dir = target_dir
+        else:
+            raise ValueError("use_zip_stemは'true'または'false'でなければなりません。")
         # 出力先ディレクトリを作成
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -28,7 +34,7 @@ def unzip_all(source_dir, target_dir):
 if __name__ == "__main__":
     import sys
     print("ZIPファイルを解凍するスクリプト")
-    if len(sys.argv) != 3:
-        print("使い方: python unzip_script.py <source_dir> <target_dir>")
+    if len(sys.argv) != 4:
+        print("使い方: python unzip_script.py <source_dir> <target_dir> <use_zip_stem>")
     else:
-        unzip_all(sys.argv[1], sys.argv[2])
+        unzip_all(sys.argv[1], sys.argv[2], sys.argv[3])

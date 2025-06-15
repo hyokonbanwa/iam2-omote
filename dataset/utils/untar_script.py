@@ -6,12 +6,19 @@ import sys
 import os
 
 def extract_targz(args):
-    tar_path, source_dir, target_dir = args
+    tar_path, source_dir, target_dir,use_tar_stem = args
     tar_path = Path(tar_path)
     target_dir = Path(target_dir)
 
-    tar_stem = tar_path.name.replace('.tar.gz', '')
-    output_dir = target_dir / tar_stem
+    if use_tar_stem == "true":
+        # ターゲットディレクトリにtarファイルの名前をそのまま使用
+        tar_stem = tar_path.name.replace('.tar.gz', '')
+        output_dir = target_dir / tar_stem
+    elif use_tar_stem == "false":
+        output_dir = target_dir
+    else:
+        return f"[エラー] use_tar_stem の値は 'true' または 'false' でなければなりません。"
+        
     output_dir.mkdir(parents=True, exist_ok=True)
 
     try:
@@ -21,7 +28,7 @@ def extract_targz(args):
     except tarfile.TarError as e:
         return f"[失敗] {tar_path.name} → {e}"
 
-def main(source_dir, target_dir):
+def main(source_dir, target_dir, use_tar_stem):
     source_dir = Path(source_dir).resolve()
     target_dir = Path(target_dir).resolve()
 
@@ -31,7 +38,7 @@ def main(source_dir, target_dir):
         print("解凍対象の .tar.gz ファイルが見つかりませんでした。")
         return
 
-    args_list = [(str(tar_path), str(source_dir), str(target_dir)) for tar_path in tar_files]
+    args_list = [(str(tar_path), str(source_dir), str(target_dir), use_tar_stem) for tar_path in tar_files]
 
     with Pool(processes=min(cpu_count(), len(tar_files))) as pool:
         with tqdm(total=len(tar_files), desc="解凍進行中", ncols=80) as pbar:
@@ -40,7 +47,7 @@ def main(source_dir, target_dir):
                 print(result)
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("使い方: python extract_targz_parallel_tqdm.py <source_dir> <target_dir>")
+    if len(sys.argv) != 4:
+        print("使い方: python extract_targz_parallel_tqdm.py <source_dir> <target_dir> <use_tar_stem>")
     else:
-        main(sys.argv[1], sys.argv[2])
+        main(sys.argv[1], sys.argv[2], sys.argv[3])
