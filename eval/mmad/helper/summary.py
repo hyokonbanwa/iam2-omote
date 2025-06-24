@@ -129,7 +129,7 @@ def caculate_accuracy_mmad(answers_json_path, normal_flag='good', show_overkill_
     plt.show()
 
     # 保存准确率表格
-    accuracy_path = answers_json_path.replace('.json', '_accuracy.csv')
+    accuracy_path = answers_json_path.replace('.jsonl', '_accuracy.csv').replace('.json', '_accuracy.csv')
     accuracy_df.to_csv(accuracy_path)
 
     print(accuracy_df)
@@ -278,7 +278,7 @@ def caculate_accuracy(answers_json_path, normal_flag='good'): # for mvtec only
     plt.show()
 
     # 保存准确率表格
-    accuracy_path = answers_json_path.replace('.json', '_accuracy.csv')
+    accuracy_path = answers_json_path.replace('.jsonl', '_accuracy.csv').replace('.json', '_accuracy.csv')
     accuracy_df.to_csv(accuracy_path)
 
     print(accuracy_df)

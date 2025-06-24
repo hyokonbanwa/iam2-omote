@@ -114,7 +114,7 @@ def calculate_accuracy_mmad(answers_json_path, normal_flag='good', show_overkill
      plt.show()
 
      # 保存
-     accuracy_path = answers_json_path.replace('.json', '_accuracy_product.csv').replace('.jsonl', '_accuracy_product.csv')
+     accuracy_path = answers_json_path.replace('.jsonl', '_accuracy_product.csv').replace('.json', '_accuracy_product.csv')
      accuracy_df.to_csv(accuracy_path, index=False)
 
      return accuracy_df

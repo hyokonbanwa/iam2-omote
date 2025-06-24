@@ -104,7 +104,7 @@ def caculate_accuracy_mmad(answers_json_path, normal_flag='good', show_overkill_
     avg_row['defect_name'] = ''
     accuracy_df = pd.concat([accuracy_df, pd.DataFrame([avg_row])], ignore_index=True)
 
-    accuracy_path = answers_json_path.replace('.json', '_accuracy_defect.csv').replace('.jsonl', '_accuracy_defect.csv')
+    accuracy_path = answers_json_path.replace('.jsonl', '_accuracy_defect.csv').replace('.json', '_accuracy_defect.csv')
     accuracy_df.to_csv(accuracy_path, index=False)
     return accuracy_df
 
