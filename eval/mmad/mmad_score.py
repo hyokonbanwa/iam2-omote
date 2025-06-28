@@ -46,7 +46,7 @@ def convert_json_to_jsonl(input_file, output_file):
     for i in tqdm(range(len(data))):
         item = data[i]
         result_entry = {
-            "image": item["image"],
+            "image": item["image"] if len(item["image"]) == 1 else item["image"][-1],
             "question": item["Question"],
             "question_type": item["type"],
             "gpt_answer": item["conversations"][-1]["value"],
