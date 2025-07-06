@@ -28,15 +28,29 @@ def main(args):
     
     
     path_list = glob.glob(os.path.join(model_path, "checkpoint-*", "eval_output",dataset_base_name, "*", "eval_output.json"), recursive=True)
-
-    checkpoint_steps = []
     path_list = sorted(path_list, key=lambda x: int(x.split("/")[-5].split("-")[-1]))
-    assert len(set(checkpoint_steps)) == len(checkpoint_steps), "Checkpoint steps should be unique."
     
+    checkpoint_steps = []
     for path in path_list:
         checkpoint = int(path.split("/")[-5].split("-")[-1])
-        if checkpoint not in checkpoint_steps:
-            checkpoint_steps.append(checkpoint)
+        checkpoint_steps.append(checkpoint)
+    
+    checkpoint_step_path_dict = {}
+    for path, step in zip(path_list, checkpoint_steps):
+        if step not in checkpoint_step_path_dict:
+            checkpoint_step_path_dict[step] = []
+        checkpoint_step_path_dict[step].append(path)
+    
+    for key,value in checkpoint_step_path_dict.items():
+        checkpoint_step_path_dict[key] = sorted(value, key=lambda x: x.split("/")[-2])[-1]
+    
+    path_list = checkpoint_step_path_dict.values()
+    checkpoint_steps = checkpoint_step_path_dict.keys()
+    checkpoint_steps = [int(step) for step in checkpoint_steps]
+
+    assert len(set(checkpoint_steps)) == len(checkpoint_steps), "Checkpoint steps should be unique."
+    
+
                 
     # for path in path_list:
     #     run_command = ["python", eval_script, "--generated_json", path]
@@ -51,8 +65,20 @@ def main(args):
         dataset_script_name = script_base_name + "_" + dataset_base_name
         score_path_list = glob.glob(os.path.join(model_path, "checkpoint-*", "eval_output",dataset_base_name, "*", f"{script_base_name}.json"), recursive=True)
         score_path_list = sorted(score_path_list, key=lambda x: int(x.split("/")[-5].split("-")[-1]))
+        score_path_step_dict = {}
+        for score_path in score_path_list:
+            step = int(score_path.split("/")[-5].split("-")[-1])
+            if step not in score_path_step_dict:
+                score_path_step_dict[step] = []
+            score_path_step_dict[step].append(score_path)
+            
+        score_path_list = [score_path_step_dict[step][-1] for step in checkpoint_steps if step in score_path_step_dict]
+        import pdb; pdb.set_trace()
+        if len(score_path_list) == 0:
+            print(f"No score files found for {dataset_script_name}.")
+            return
         
-
+        assert len(score_path_list) == len(checkpoint_steps), "Score files should match checkpoint steps."
         run = wandb.init(
             project=PROJECT,
             id=RUN_ID,
