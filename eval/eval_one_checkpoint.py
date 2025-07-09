@@ -65,8 +65,8 @@ def main(args):
 
         data = load_json(score_path)
         # print(flatten_json(data))
-        scores = data.get("scores", {})
-        data_num = data.get("data_num", {})
+        scores = data.get("summary_scores", {})
+        data_num = data.get("summary_data_num", {})
         scores.update(data_num)
         tmp_scores = {}
         for k, v in scores.items():

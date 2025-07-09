@@ -43,15 +43,19 @@ def extract_bbox_from_text(ans):
 
 def calculate_iou(gt_bbox_list, pred_bbox_list):
     iou_matrix = box_iou(torch.tensor(gt_bbox_list).float(), torch.tensor(pred_bbox_list).float())
+    iou_matrix = torch.nan_to_num(iou_matrix, nan=0.0)  # NaNを0に置き換える
     iou_argsort_matrix = torch.argsort(iou_matrix.flatten(),descending=True).argsort().reshape(iou_matrix.shape)#iouが大きい順にソートしたインデックスを取得
+    # print(iou_argsort_matrix)
     # print("-" * 50)
     # print(iou_matrix)
     pred_index_list =  torch.full((len(pred_bbox_list),), False, dtype=torch.bool)
     gt_index_list = torch.full((len(gt_bbox_list),), False, dtype=torch.bool)
 
+    short_index_list = pred_index_list if len(pred_bbox_list) < len(gt_bbox_list) else gt_index_list
     iou_info_list = []
 
-    for i in range(len(gt_bbox_list)):
+    # print(iou_matrix.numel())
+    for i in range(iou_matrix.numel()):
         max_iou_index = torch.where(iou_argsort_matrix == i)
         if not gt_index_list[max_iou_index[0]] and not pred_index_list[max_iou_index[1]]:
             iou_info_list.append( {
@@ -61,8 +65,22 @@ def calculate_iou(gt_bbox_list, pred_bbox_list):
             })
             gt_index_list[max_iou_index[0]] = True
             pred_index_list[max_iou_index[1]] = True
+            # print(f"index {i} - gt_index: {max_iou_index[0].item()}, pred_index: {max_iou_index[1].item()}, iou_value: {iou_matrix[max_iou_index].item()}")
+        
+        if torch.all(short_index_list):
+            break
+        
+    assert len(iou_info_list) == min(len(gt_bbox_list), len(pred_bbox_list)), f"Length mismatch: {len(iou_info_list)} != {min(len(gt_bbox_list), len(pred_bbox_list))}"
     # print(iou_info_list)
-    return iou_info_list
+    # for iou_info in iou_info_list:
+    #     if math.isnan(iou_info["iou_value"]):
+    #         print(f"IOU value is NaN for gt index {iou_info['gt_index']} and pred index {iou_info['pred_index']}")
+    #         print(iou_matrix[iou_info['gt_index'], iou_info['pred_index']])
+    #         print(iou_matrix[iou_info['gt_index'], iou_info['pred_index']].item())
+    #         print(iou_info["iou_value"])
+    #         print(iou_matrix)
+    
+    return iou_info_list,iou_matrix,iou_argsort_matrix,pred_index_list, gt_index_list
 
 def sort_list_of_dicts(data, key, reverse=False):
     """
@@ -123,7 +141,7 @@ def calculate_score(correct_data, generated_data,args,current_date):
         if len(generated_bbox) == 0:
             iou_list = [0.0] * len(correct_bbox)
         else:
-            iou_list = [item["iou_value"] for item in calculate_iou(correct_bbox, generated_bbox)]
+            iou_list = [item["iou_value"] for item,_,_,_,_ in calculate_iou(correct_bbox, generated_bbox)]
             generated_iou_list.extend(iou_list)
             if len(iou_list) < len(correct_bbox):
                 iou_list.extend([0.0] * (len(correct_bbox) - len(iou_list)))
@@ -156,7 +174,7 @@ def calculate_score(correct_data, generated_data,args,current_date):
                 "filename": args.generated_json,
                 "correct_json": args.gt_json,
                 "timestamp": current_date,
-                "scores": {
+                "summary_scores": {
                     "accuracy": accuracy,
                     "mean_iou": mean_all_iou,
                 },

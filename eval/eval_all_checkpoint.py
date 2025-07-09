@@ -52,10 +52,10 @@ def main(args):
     
 
                 
-    # for path in path_list:
-    #     run_command = ["python", eval_script, "--generated_json", path]
-    #     run_command.extend(other_command)
-    #     subprocess.run(run_command, check=True)
+    for path in path_list:
+        run_command = ["python", eval_script, "--generated_json", path]
+        run_command.extend(other_command)
+        subprocess.run(run_command, check=True)
         
     if args.wandb_run_id and args.wandb_project:
         print(f"Using WandB run ID: {args.wandb_run_id} and project: {args.wandb_project}")
@@ -73,7 +73,7 @@ def main(args):
             score_path_step_dict[step].append(score_path)
             
         score_path_list = [score_path_step_dict[step][-1] for step in checkpoint_steps if step in score_path_step_dict]
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         if len(score_path_list) == 0:
             print(f"No score files found for {dataset_script_name}.")
             return
@@ -92,8 +92,8 @@ def main(args):
             print(f"Step: {step}")
             data = load_json(score_path)
             # print(flatten_json(data))
-            scores = data.get("scores", {})
-            data_num = data.get("data_num", {})
+            scores = data.get("summary_scores", {})
+            data_num = data.get("summary_data_num", {})
             scores.update(data_num)
             tmp_scores = {}
             for k, v in scores.items():
