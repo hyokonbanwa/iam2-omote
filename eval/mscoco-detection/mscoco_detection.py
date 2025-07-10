@@ -469,6 +469,7 @@ def main(args):
         
     cat_name2id = get_mscoco2017_detection_cat_name2id(split="val")
     cat_name2id.update({"unknown": -1})
+    category_id2name = {v: k for k, v in cat_name2id.items()}
     processor = AutoProcessor.from_pretrained("/data_ssd/huggingface_model_weights/microsoft/kosmos-2-patch14-224")
     
     # images = create_images_for_coco(correct_data, args.image_folder_root)
@@ -476,7 +477,11 @@ def main(args):
     all_pred_annotations = create_annotations_for_coco(generated_data, cat_name2id, processor)
     per_image_result_dict, oc_cost_list = get_per_image_class_result_and_oc_cost(all_gt_annotations, all_pred_annotations, cat_name2id, iou_threshold=args.iou_threshold)
     per_category_result_dict = convert_per_class_result_dict(per_image_result_dict)
-    _,output_data = calculate_score(per_category_result_dict, oc_cost_list,cat_name2id, args, current_date)
+    
+    _,output_data = calculate_score(per_category_result_dict, oc_cost_list,category_id2name)
+    output_data.update({"filename": args.generated_json,
+                        "correct_json": args.gt_json,
+                        "timestamp": current_date})
     
     print(f"Saving sorted JSON data to \"{output_path}\"...")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)

@@ -25,8 +25,13 @@ def main(args):
     dataset_base_name = args.dataset_base_name
     eval_script = args.eval_script
     other_command = args.other_command
+    gen_args_folder = args.gen_args_folder
     
-    path = glob.glob(os.path.join(model_path, "eval_output", dataset_base_name, "*", "eval_output.json"), recursive=True)[-1]
+    if gen_args_folder:
+        join_path_list = [model_path, "checkpoint-*", "eval_output",dataset_base_name, gen_args_folder, "*", "eval_output.json"]
+    else:
+        join_path_list = [model_path, "checkpoint-*", "eval_output",dataset_base_name, "*", "eval_output.json"]
+    path = glob.glob(os.path.join(*join_path_list), recursive=True)[-1]
     
     if not os.path.exists(path):
         print(f"No eval_output.json found in {os.path.join(model_path, 'eval_output', dataset_base_name, '*')}.")
@@ -47,7 +52,15 @@ def main(args):
         RUN_ID = args.wandb_run_id
         script_base_name = os.path.basename(eval_script).split(".")[0]
         dataset_script_name = script_base_name + "_" + dataset_base_name
-        score_path = glob.glob(os.path.join(model_path, "eval_output",dataset_base_name, "*", f"{script_base_name}.json"),recursive=True)[-1]
+        if gen_args_folder:
+            dataset_script_name += "_" + gen_args_folder
+            
+        if gen_args_folder:
+            join_path_list = [model_path, "checkpoint-*", "eval_output",dataset_base_name, gen_args_folder, "*", f"{script_base_name}.json"]
+        else:
+            join_path_list = [model_path, "checkpoint-*", "eval_output",dataset_base_name, "*", f"{script_base_name}.json"]
+            
+        score_path = glob.glob(os.path.join(*join_path_list),recursive=True)[-1]
         if not os.path.exists(score_path):
             print(f"No score files found for {dataset_script_name}.")
             return
@@ -101,6 +114,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Utility functions for JSON handling and sorting.")
     parser.add_argument("--model_path", type=str, help='Path to the model directory containing checkpoints.',required=True)
     parser.add_argument("--dataset_base_name", type=str, help='Base name of the dataset for evaluation.',required=True)
+    parser.add_argument("--gen_args_folder", type=str, help='Path to the folder containing generated arguments for evaluation.', default=None)
     parser.add_argument("--eval_script", type=str, help='Path to the evaluation script.',required=True)
     parser.add_argument("--wandb_run_id", type=str, help='WandB run ID.')
     parser.add_argument("--wandb_project", type=str, help='WandB project name.')
