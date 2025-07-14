@@ -27,10 +27,15 @@ def main(args):
     other_command = args.other_command
     gen_args_folder = args.gen_args_folder
     
+    # if gen_args_folder:
+    #     join_path_list = [model_path, "checkpoint-*", "eval_output",dataset_base_name, gen_args_folder, "*", "eval_output.json"]
+    # else:
+    #     join_path_list = [model_path, "checkpoint-*", "eval_output",dataset_base_name, "*", "eval_output.json"]
     if gen_args_folder:
-        join_path_list = [model_path, "checkpoint-*", "eval_output",dataset_base_name, gen_args_folder, "*", "eval_output.json"]
+        join_path_list = [model_path, "eval_output",dataset_base_name, gen_args_folder, "*", "eval_output.json"]
     else:
-        join_path_list = [model_path, "checkpoint-*", "eval_output",dataset_base_name, "*", "eval_output.json"]
+        join_path_list = [model_path, "eval_output",dataset_base_name, "*", "eval_output.json"]
+    # import pdb; pdb.set_trace()
     path = glob.glob(os.path.join(*join_path_list), recursive=True)[-1]
     
     if not os.path.exists(path):
@@ -56,9 +61,9 @@ def main(args):
             dataset_script_name += "_" + gen_args_folder
             
         if gen_args_folder:
-            join_path_list = [model_path, "checkpoint-*", "eval_output",dataset_base_name, gen_args_folder, "*", f"{script_base_name}.json"]
+            join_path_list = [model_path, "eval_output",dataset_base_name, gen_args_folder, "*", f"{script_base_name}.json"]
         else:
-            join_path_list = [model_path, "checkpoint-*", "eval_output",dataset_base_name, "*", f"{script_base_name}.json"]
+            join_path_list = [model_path, "eval_output",dataset_base_name, "*", f"{script_base_name}.json"]
             
         score_path = glob.glob(os.path.join(*join_path_list),recursive=True)[-1]
         if not os.path.exists(score_path):
