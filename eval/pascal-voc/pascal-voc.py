@@ -568,6 +568,31 @@ def create_annotations_for_coco(conversation_dataset,categories,processor,delete
     }
     return return_annotations, return_num_dict
 
+def get_final_score(dataset_score, per_category_result_dict, all_gt_num_dict, all_pred_num_dict):
+    """
+    Calculate the final score for the dataset.
+
+    Args:
+        dataset_score (dict): Dataset score dictionary.
+        per_category_result_dict (dict): Per-category results.
+        all_gt_num_dict (dict): Ground truth number dictionary.
+        all_pred_num_dict (dict): Predicted number dictionary.
+
+    Returns:
+        dict: Final score dictionary.
+    """
+    dataset_score["per_category_result"] = per_category_result_dict
+    dataset_score["summary_data_num"].update(all_pred_num_dict)
+    dataset_score["summary_data_num"].update({"gt_name_count": all_gt_num_dict["name_match_count"],
+                                              "gt_name_delim_count": all_gt_num_dict["name_match_delim_count"]})
+    
+    print("-" * 50)
+    for key ,value in dataset_score["summary_data_num"].items():
+        print(f"{key}: {value}")
+    print("-" * 50)
+    print("End of dataset score")
+    return dataset_score
+
 def main(args):
     base_name = os.path.basename(__file__)
     current_date = datetime.datetime.now().strftime('%Y-%m-%dT%H_%M_%S')
@@ -606,15 +631,15 @@ def main(args):
     per_image_result_dict, oc_cost_list = get_per_image_class_result_and_oc_cost(all_gt_annotations, all_pred_annotations, category_name2id, iou_threshold=args.iou_threshold)
     per_category_result_dict = convert_per_class_result_dict(per_image_result_dict)
     
-    _,output_data = calculate_score(per_category_result_dict, oc_cost_list,category_id2name)
-    output_data.update({"filename": args.generated_json,
+    per_category_result_dict,dataset_score = calculate_score(per_category_result_dict, oc_cost_list,category_id2name)
+    final_score = get_final_score(dataset_score, per_category_result_dict, all_gt_num_dict, all_pred_num_dict)
+    final_score.update({"filename": args.generated_json,
                         "correct_json": args.gt_json,
                         "timestamp": current_date})
-    
     print(f"Saving sorted JSON data to \"{output_path}\"...")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
      # Save the output data to the specified output path
-    save_json(output_path, output_data)
+    save_json(output_path, final_score)
 
 if __name__ == "__main__":
     
