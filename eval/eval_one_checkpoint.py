@@ -50,11 +50,23 @@ def main(args):
     run_command = ["python", eval_script, "--generated_json", path]
     run_command.extend(other_command)
     subprocess.run(run_command, check=True)
-    
-    if args.wandb_run_id and args.wandb_project:
+
+    PROJECT = args.wandb_project
+    RUN_ID = args.wandb_run_id
+    RUN_NAME = args.wandb_run_name
+    if args.wandb_make_run and PROJECT and (RUN_ID is None):
+        print(f"Creating a new WandB run in project: {PROJECT} with name: {RUN_NAME}")
+        run = wandb.init(
+            project=PROJECT,
+            name=RUN_NAME
+        )
+        RUN_ID = run.id
+        run.finish()
+
+
+    if PROJECT and RUN_ID:
         print(f"Using WandB run ID: {args.wandb_run_id} and project: {args.wandb_project}")
-        PROJECT = args.wandb_project
-        RUN_ID = args.wandb_run_id
+
         script_base_name = os.path.basename(eval_script).split(".")[0]
         dataset_script_name = script_base_name + "_" + dataset_base_name
         if gen_args_folder:
@@ -100,7 +112,9 @@ def main(args):
         # })  # step を指定してログする
         
         #各スコアを summary に追加
-        scores_values = {f"{k}/value": v for k, v in scores_dict.items()}  # 各スコアの最大値を取得
+        scores_values = {f"{k}/max": v for k, v in scores_dict.items()}  # 各スコアの最大値を取得
+        run.summary.update(scores_values)
+        scores_values = {f"{k}/min": v for k, v in scores_dict.items()}  # 各スコアの最大値を取得
         run.summary.update(scores_values)
         max_scores_steps  = { f"{dataset_script_name}/step":checkpoint_step}  # 各スコアの最大値のステップを取得
         run.summary.update(max_scores_steps)  # 各スコアの最大値のステップを summary に追加
@@ -119,10 +133,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Utility functions for JSON handling and sorting.")
     parser.add_argument("--model_path", type=str, help='Path to the model directory containing checkpoints.',required=True)
     parser.add_argument("--dataset_base_name", type=str, help='Base name of the dataset for evaluation.',required=True)
+    parser.add_argument("--wandb_make_run", action='store_true', help='Whether to create a new WandB run.')
     parser.add_argument("--gen_args_folder", type=str, help='Path to the folder containing generated arguments for evaluation.', default=None)
     parser.add_argument("--eval_script", type=str, help='Path to the evaluation script.',required=True)
     parser.add_argument("--wandb_run_id", type=str, help='WandB run ID.')
     parser.add_argument("--wandb_project", type=str, help='WandB project name.')
+    parser.add_argument("--wandb_run_name", type=str, help='WandB run name.', default=None)
     parser.add_argument("--other_command", type=csv_list, help='Additional command line arguments for the evaluation script.', default=[])
     args = parser.parse_args()
     print(f"Arguments: {args}")

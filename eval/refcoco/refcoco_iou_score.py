@@ -42,6 +42,8 @@ def extract_bbox_from_text(ans):
     return answer
 
 def calculate_iou(gt_bbox_list, pred_bbox_list):
+    # print(gt_bbox_list)
+    # print(pred_bbox_list)
     iou_matrix = box_iou(torch.tensor(gt_bbox_list).float(), torch.tensor(pred_bbox_list).float())
     iou_matrix = torch.nan_to_num(iou_matrix, nan=0.0)  # NaNを0に置き換える
     iou_argsort_matrix = torch.argsort(iou_matrix.flatten(),descending=True).argsort().reshape(iou_matrix.shape)#iouが大きい順にソートしたインデックスを取得
@@ -96,6 +98,28 @@ def sort_list_of_dicts(data, key, reverse=False):
     """
     return sorted(data, key=lambda x: x[key], reverse=reverse)
 
+
+def kosmos2_get_bbox_and_label(processor, text,*args, **kwargs):
+    _, entities = processor.post_process_generation(text)
+    bbox_list = [entity[-1] for entity in entities]
+    bbox_list = []
+    label_list = []
+    for entity in entities:
+        bbox_list.extend(entity[-1])
+        label_list.extend(entity[0] for _ in entity[-1])
+    return bbox_list, label_list
+
+
+def paligemma_get_bbox(text: str,*args, **kwargs):
+    pattern = r"(((<loc\d{4}>){4}))"
+    matches = re.findall(pattern, text)
+    # print("matches", matches)
+    bbox_list = []
+    for m in matches:
+        y1, x1, y2, x2 = [int(x)/1023.0 for x in re.findall(r'\d+', m[1])]
+        bbox_list.append([x1, y1, x2, y2])
+    return bbox_list, []
+
 def calculate_score(correct_data, generated_data,args,current_date):
     all_iou_list = []
     generated_iou_list = []
@@ -105,7 +129,12 @@ def calculate_score(correct_data, generated_data,args,current_date):
 
     iou_threshold = 0.5
 
-    processor = AutoProcessor.from_pretrained("/data_ssd/huggingface_model_weights/microsoft/kosmos-2-patch14-224")
+    if "kosmos-2" in args.model:
+        processor = AutoProcessor.from_pretrained("/data_ssd/huggingface_model_weights/microsoft/kosmos-2-patch14-224")
+        get_bbox_func = kosmos2_get_bbox_and_label
+    else:
+        processor = None
+        get_bbox_func = paligemma_get_bbox
 
     eval_dict ={}
 
@@ -113,35 +142,49 @@ def calculate_score(correct_data, generated_data,args,current_date):
         assert correct_data[i]["id"] == generated_data[i]["id"], f"ID mismatch at index {i}."
         ann_id = correct_data[i]["ann_id"]
         if  ann_id not in eval_dict:
+            correct_bbox = correct_data[i]["gt_entities"][0][-1]
+            if type(correct_bbox[0]) != list:
+                correct_bbox = [correct_bbox]
             eval_dict[ann_id] = {
                 "ann_id": ann_id,
                 "gt_name": correct_data[i]["gt_entities"][0][0],
-                "correct_data": [correct_data[i]["gt_entities"][0][-1]],
+                "correct_data": correct_bbox,
                 "generated_data": []
             }
         # eval_dict[ann_id]["correct_data"].append(correct_data[i]["gt_entities"][0][-1])
-        caption, entities = processor.post_process_generation(generated_data[i]["conversations"][0]["value"]+generated_data[i]["conversations"][1]["value"])
+        output_text = generated_data[i]["conversations"][0]["value"]+generated_data[i]["conversations"][1]["value"]
+        
         # for e in entities:
         #     if e[0] == eval_dict[ann_id]["gt_name"]:
         #         generated_bbox = e[0][-1]
         #         break
         #print(generated_data[i]["conversations"][0]["value"]+generated_data[i]["conversations"][1]["value"])
-        generated_bbox = entities[0][-1] if len(entities) > 0 else []
+        bbox_list, label_list = get_bbox_func(processor=processor, text=output_text)
+        generated_bbox = bbox_list[0] if len(bbox_list) > 0 else None
         
-        
-        eval_dict[ann_id]["generated_data"].extend(generated_bbox)
+        if generated_bbox is not None:
+            eval_dict[ann_id]["generated_data"].append(generated_bbox)
 
     total_data_num = len(eval_dict)
+    
         
     for eval_item in eval_dict.values():
         correct_bbox = eval_item["correct_data"]
         generated_bbox = eval_item["generated_data"]
+        # import pdb; pdb.set_trace()
         gt_iou_num_count += len(correct_bbox)
         
         if len(generated_bbox) == 0:
             iou_list = [0.0] * len(correct_bbox)
         else:
-            iou_list = [item["iou_value"] for item,_,_,_,_ in calculate_iou(correct_bbox, generated_bbox)]
+            # try :
+            #     iou_info_list ,_,_,_,_ = calculate_iou(correct_bbox, generated_bbox)
+            # except Exception as e:
+            #     import pdb; pdb.set_trace()
+            iou_info_list ,_,_,_,_ = calculate_iou(correct_bbox, generated_bbox)
+            iou_list = [iou_info["iou_value"] for iou_info in iou_info_list]
+            # if iou_list[0] < 1.0:
+            #     import pdb; pdb.set_trace()
             generated_iou_list.extend(iou_list)
             if len(iou_list) < len(correct_bbox):
                 iou_list.extend([0.0] * (len(correct_bbox) - len(iou_list)))
@@ -229,6 +272,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Utility functions for JSON handling and sorting.")
     parser.add_argument("-json","--generated_json", type=str, help='Path to the generated JSON file to load or save.')
+    parser.add_argument("--model", type=str, help='model-name',default="kosmos-2-patch14-224")
     parser.add_argument("--output_path", type=str, help='Path to save the sorted JSON file.',default=None)
     parser.add_argument("-gt","--gt_json", type=str, help='Path to the ground truth JSON file to load for sorting.', default=gt_json_path )
     args = parser.parse_args()
