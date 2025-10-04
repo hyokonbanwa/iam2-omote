@@ -488,64 +488,7 @@ def get_pascal_voc_category():
     cat_name2id = {v:k for k, v in cat_id2name.items()}
     return cat_name2id, cat_id2name
 
-def kosmos2_get_bbox_and_label(processor, text,*args, **kwargs):
-    _, entities = processor.post_process_generation(text)
-    bbox_list = [entity[-1] for entity in entities]
-    bbox_list = []
-    label_list = []
-    for entity in entities:
-        bbox_list.extend(entity[-1])
-        label_list.extend(entity[0] for _ in entity[-1])
-    return bbox_list, label_list
-
-def check_bbox_valid(bbox, box_w_h=[1, 1], min_bbox_size=1e-6):
-    x1, y1, x2, y2 = bbox
-    if x1 < 0 or y1 < 0 or x2 < 0 or y2 < 0:
-        return False
-    if x1 > box_w_h[0] or y1 > box_w_h[1] or x2 > box_w_h[0] or y2 > box_w_h[1]:
-        return False
-    if x1 >= x2 or y1 >= y2:
-        return False
-    bbox_area = (x2 - x1) * (y2 - y1)
-    if bbox_area < min_bbox_size:
-        return False
-    return True
-
-def parse_bbox_and_labels(processor, detokenizer_output: str):
-    # pattern = r"((<loc\d{4}>){4})[^;<]+|((<loc\d{4}>){4})$"
-    # matches = re.findall(pattern, detokenizer_output)
-    # print("matches", matches)
-    pattern = r"(((<loc\d{4}>){4})([^;<]+))"
-    matches = re.findall(pattern, detokenizer_output)
-    if len(matches) > 0 and matches[0][-1].strip() != "":
-        label_list = []
-        bbox_list = []
-        for m in matches:
-            y1, x1, y2, x2 = [int(x)/1024.0 for x in re.findall(r'\d+', m[1])]
-            if check_bbox_valid([x1, y1, x2, y2], box_w_h=[1, 1], min_bbox_size=1e-6):
-                bbox_list.append([x1, y1, x2, y2])
-                label_list.append(m[-1].strip())
-        return bbox_list, label_list
-
-    pattern = r"([^<]+)((<loc\d{4}>){4})"
-    matches = re.findall(pattern, detokenizer_output)
-    if len(matches) > 0:
-        label_pattern = r"^<image>detect\s([^<]+)<loc\d{4}>"
-        match = re.findall(label_pattern, detokenizer_output)
-        if len(match) > 0 and match[0].strip() != "":
-            label = match[0].strip()
-            bbox_list = []
-            for m in matches:
-                y1, x1, y2, x2 = [int(x)/1024.0 for x in re.findall(r'\d+', m[1])]
-                if check_bbox_valid([x1, y1, x2, y2], box_w_h=[1, 1], min_bbox_size=1e-6):
-                    bbox_list.append([x1, y1, x2, y2])
-            label_list = [label] * len(bbox_list)
-            return bbox_list, label_list
-    
-    return [], []
-
-
-def create_annotations_for_coco(conversation_dataset,categories,get_bbox_func,processor,delete_region_failure=False,unknown_to_similar=False,sentence_transformer_model_path=None):
+def create_annotations_for_coco(conversation_dataset,categories,processor,delete_region_failure=False,unknown_to_similar=False,sentence_transformer_model_path=None):
     if unknown_to_similar and not delete_region_failure:
         raise ValueError("unknown_to_similar is True but delete_region_failure is False. This combination is not supported.")
     elif unknown_to_similar and delete_region_failure:
@@ -580,10 +523,8 @@ def create_annotations_for_coco(conversation_dataset,categories,get_bbox_func,pr
             for conv in conversation_dataset[conversation]["conversations"]:
                 text += conv["value"]
 
-            ori_bbox_list,name_list = get_bbox_func(processor,text)
-            for name,bbox in zip(name_list,ori_bbox_list):
-                bbox_list = [bbox]
-                # import pdb;pdb.set_trace()
+            caption, entities = processor.post_process_generation(text)
+            for name,_,bbox_list in entities:
                 if "<patch_index" in name and delete_region_failure:
                     #raise ValueError(f"Unexpected patch index in name: {name}")
                     region_failure_count += 1
@@ -681,18 +622,11 @@ def main(args):
     category_name2id,category_id2name = get_pascal_voc_category()
     # category_name2id.update({"unknown": -1})
     # category_id2name.update({-1: "unknown"})
-    if "kosmos-2" in args.model:
-        processor = AutoProcessor.from_pretrained("/data_ssd/huggingface_model_weights/microsoft/kosmos-2-patch14-224")
-        get_bbox_func = kosmos2_get_bbox_and_label
-    elif "paligemma" in args.model:
-        processor = None
-        get_bbox_func = parse_bbox_and_labels
-    else:
-        raise ValueError(f"Unknown model: {args.model}")
+    processor = AutoProcessor.from_pretrained("/data_ssd/huggingface_model_weights/microsoft/kosmos-2-patch14-224")
     
     # images = create_images_for_coco(correct_data, args.image_folder_root)
-    all_gt_annotations, all_gt_num_dict = create_annotations_for_coco(correct_data, category_name2id,get_bbox_func, processor)
-    all_pred_annotations, all_pred_num_dict = create_annotations_for_coco(generated_data, category_name2id, get_bbox_func,processor,
+    all_gt_annotations, all_gt_num_dict = create_annotations_for_coco(correct_data, category_name2id, processor)
+    all_pred_annotations, all_pred_num_dict = create_annotations_for_coco(generated_data, category_name2id, processor,
             delete_region_failure=True, unknown_to_similar=True, sentence_transformer_model_path=args.sentence_transformer_model_path)
     per_image_result_dict, oc_cost_list = get_per_image_class_result_and_oc_cost(all_gt_annotations, all_pred_annotations, category_name2id, iou_threshold=args.iou_threshold)
     per_category_result_dict = convert_per_class_result_dict(per_image_result_dict)
@@ -709,7 +643,7 @@ def main(args):
 
 if __name__ == "__main__":
     
-    gt_json_path = "/data_ssd/PASCAL-VOC/paligemma/val_pascal-voc_one-class_for_paligemma_sort_size.json"
+    gt_json_path = "/data_ssd/PASCAL-VOC/val_pascal-voc-one-class_for-kosmos2_one_class_with_delim.json"
 
     parser = argparse.ArgumentParser(description="Utility functions for JSON handling and sorting.")
     parser.add_argument("-json","--generated_json", type=str, help='Path to the generated JSON file to load or save.')
@@ -718,7 +652,6 @@ if __name__ == "__main__":
     parser.add_argument("--iou_threshold", type=float, default=0.5, help="IOU threshold for true positives.")
     parser.add_argument("--sentence_transformer_model_path", type=str, default="/data_ssd/huggingface_model_weights/sentence-transformers/all-MiniLM-L6-v2",
                         help="Path to the SentenceTransformer model for similarity scoring.")
-    parser.add_argument("--model", type=str, help='model-name',default="kosmos-2-patch14-224")
     # parser.add_argument("--image_folder_root", type=str, default="/data_ssd", help="Root folder for images.")
     args = parser.parse_args()
     main(args)

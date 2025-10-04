@@ -51,8 +51,24 @@ def main(args):
     run_command.extend(other_command)
     subprocess.run(run_command, check=True)
 
+    model_folder_name_list = [os.path.basename(model_path) if not os.path.basename(model_path).startswith("checkpoint-") else model_path.split("/")[-2]]
+    wandb_run_id_list = []
+    if args.wandb_entity:
+        api = wandb.Api()
+        runs = api.runs(os.path.join(args.wandb_entity,args.wandb_project))
+        run_name_list = [run.name for run in runs]
+        assert len(set(run_name_list)) == len(run_name_list), "Run names should be unique."
+        run_name_to_id = {run.name: run.id for run in runs}
+        for model_folder_name in model_folder_name_list:
+            wandb_run_id_list.append(run_name_to_id[model_folder_name])
+                
+        assert len(wandb_run_id_list) == 1, "WandB run IDs should match the number of model paths."
+    else:
+        print("No WandB entity provided, skipping WandB run ID retrieval.")
+        wandb_run_id_list = 1 * [None]
+
     PROJECT = args.wandb_project
-    RUN_ID = args.wandb_run_id
+    RUN_ID = args.wandb_run_id if args.wandb_run_id else wandb_run_id_list[0]
     RUN_NAME = args.wandb_run_name
     if args.wandb_make_run and PROJECT and (RUN_ID is None):
         print(f"Creating a new WandB run in project: {PROJECT} with name: {RUN_NAME}")
@@ -76,7 +92,8 @@ def main(args):
             join_path_list = [model_path, "eval_output",dataset_base_name, gen_args_folder, "*", f"{script_base_name}.json"]
         else:
             join_path_list = [model_path, "eval_output",dataset_base_name, "*", f"{script_base_name}.json"]
-            
+        
+        print(f"Looking for score files in: {os.path.join(*join_path_list)}")
         score_path = glob.glob(os.path.join(*join_path_list),recursive=True)[-1]
         if not os.path.exists(score_path):
             print(f"No score files found for {dataset_script_name}.")
@@ -131,6 +148,7 @@ def csv_list(string):
 #Namespace(model_path='a', dataset_base_name='b', eval_script='c', run_id=None, project=None, other_command=['--x', '--b'])
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Utility functions for JSON handling and sorting.")
+    parser.add_argument("--wandb_entity", type=str, help="your_entity",default=None)
     parser.add_argument("--model_path", type=str, help='Path to the model directory containing checkpoints.',required=True)
     parser.add_argument("--dataset_base_name", type=str, help='Base name of the dataset for evaluation.',required=True)
     parser.add_argument("--wandb_make_run", action='store_true', help='Whether to create a new WandB run.')

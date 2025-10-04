@@ -132,9 +132,11 @@ def calculate_score(correct_data, generated_data,args,current_date):
     if "kosmos-2" in args.model:
         processor = AutoProcessor.from_pretrained("/data_ssd/huggingface_model_weights/microsoft/kosmos-2-patch14-224")
         get_bbox_func = kosmos2_get_bbox_and_label
-    else:
+    elif "paligemma" in args.model:
         processor = None
         get_bbox_func = paligemma_get_bbox
+    else:
+        raise ValueError(f"Unknown model: {args.model}")
 
     eval_dict ={}
 
@@ -142,16 +144,16 @@ def calculate_score(correct_data, generated_data,args,current_date):
         assert correct_data[i]["id"] == generated_data[i]["id"], f"ID mismatch at index {i}."
         ann_id = correct_data[i]["ann_id"]
         if  ann_id not in eval_dict:
-            correct_bbox = correct_data[i]["gt_entities"][0][-1]
+            correct_bbox = correct_data[i]["gt_entities_quantized_normalized"][0][-1]
             if type(correct_bbox[0]) != list:
                 correct_bbox = [correct_bbox]
             eval_dict[ann_id] = {
                 "ann_id": ann_id,
-                "gt_name": correct_data[i]["gt_entities"][0][0],
+                "gt_name": correct_data[i]["gt_entities_quantized_normalized"][0][0],
                 "correct_data": correct_bbox,
                 "generated_data": []
             }
-        # eval_dict[ann_id]["correct_data"].append(correct_data[i]["gt_entities"][0][-1])
+        # eval_dict[ann_id]["correct_data"].append(correct_data[i]["gt_entities_quantized_normalized"][0][-1])
         output_text = generated_data[i]["conversations"][0]["value"]+generated_data[i]["conversations"][1]["value"]
         
         # for e in entities:
@@ -166,7 +168,6 @@ def calculate_score(correct_data, generated_data,args,current_date):
             eval_dict[ann_id]["generated_data"].append(generated_bbox)
 
     total_data_num = len(eval_dict)
-    
         
     for eval_item in eval_dict.values():
         correct_bbox = eval_item["correct_data"]
