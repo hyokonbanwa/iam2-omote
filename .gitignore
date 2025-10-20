@@ -6,3 +6,6 @@ output*.csv
 wandb/
 
 eval/wandb/
+artifacts/
+
+

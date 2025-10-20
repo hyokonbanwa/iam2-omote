@@ -53,7 +53,17 @@ def main(args):
 
     model_folder_name_list = [os.path.basename(model_path) if not os.path.basename(model_path).startswith("checkpoint-") else model_path.split("/")[-2]]
     wandb_run_id_list = []
-    if args.wandb_entity:
+    if args.wandb_run_name and args.wandb_entity and not args.wandb_make_run and args.wandb_run_id is None:
+        api = wandb.Api()
+        runs = api.runs(os.path.join(args.wandb_entity,args.wandb_project))
+        run_name_list = [run.name for run in runs]
+        assert len(set(run_name_list)) == len(run_name_list), "Run names should be unique."
+        run_name_to_id = {run.name: run.id for run in runs}
+        if args.wandb_run_name in run_name_to_id:
+            wandb_run_id_list.append(run_name_to_id[args.wandb_run_name])
+        assert len(wandb_run_id_list) == 1, "WandB run IDs should match the number of model paths."
+
+    if args.wandb_entity and (args.wandb_run_name is None and args.wandb_run_id is None) and not args.wandb_make_run:
         api = wandb.Api()
         runs = api.runs(os.path.join(args.wandb_entity,args.wandb_project))
         run_name_list = [run.name for run in runs]
@@ -63,9 +73,12 @@ def main(args):
             wandb_run_id_list.append(run_name_to_id[model_folder_name])
                 
         assert len(wandb_run_id_list) == 1, "WandB run IDs should match the number of model paths."
-    else:
-        print("No WandB entity provided, skipping WandB run ID retrieval.")
-        wandb_run_id_list = 1 * [None]
+    # else:
+    #     print("No WandB entity provided, skipping WandB run ID retrieval.")
+    #     wandb_run_id_list = 1 * [None]
+
+    if len(wandb_run_id_list) == 0:
+        wandb_run_id_list = [None]
 
     PROJECT = args.wandb_project
     RUN_ID = args.wandb_run_id if args.wandb_run_id else wandb_run_id_list[0]
