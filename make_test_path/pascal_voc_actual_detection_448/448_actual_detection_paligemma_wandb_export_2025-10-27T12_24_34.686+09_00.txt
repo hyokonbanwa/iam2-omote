@@ -1,0 +1,13 @@
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-448px/448px_size_aligned_train-vision-proj-llm_cedfl_excepted10_split_ce_2025-10-22T01_07_15/checkpoint-2090
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-448px/448px_size_aligned_train-vision-proj-llm_cedfl_excepted10_combine_ce_2025-10-21T22_46_57/checkpoint-1980
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-448px/448px_size_aligned_train-vision-proj-llm_ce_excepted10_dfl_2025-10-21T20_32_44/checkpoint-2200
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-448px/448px_size_aligned_train-vision-proj-llm_cedfl_excepted5_split_ce_2025-10-21T18_22_13/checkpoint-1760
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-448px/448px_size_aligned_train-vision-proj-llm_cedfl_excepted5_combine_ce_2025-10-21T16_04_56/checkpoint-1980
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-448px/448px_size_aligned_train-vision-proj-llm_ce_excepted5_dfl_2025-10-21T13_49_39/checkpoint-1430
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-448px/448px_size_aligned_train-vision-proj-llm_cedfl_excepted2_split_ce_2025-10-21T11_38_04/checkpoint-1650
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-448px/448px_size_aligned_train-vision-proj-llm_cedfl_excepted2_combine_ce_2025-10-21T09_24_34/checkpoint-1540
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-448px/448px_size_aligned_train-vision-proj-llm_ce_excepted2_dfl_2025-10-21T07_12_05/checkpoint-1650
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-448px/448px_size_aligned_train-vision-proj-llm_cedfl_excepted_split_ce_2025-10-21T05_01_49/checkpoint-1210
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-448px/448px_size_aligned_train-vision-proj-llm_cedfl_excepted_combine_ce_2025-10-21T02_50_59/checkpoint-2200
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-448px/448px_size_aligned_train-vision-proj-llm_ce_excepted_dfl_2025-10-21T00_38_42/checkpoint-1210
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-448px/448px_size_aligned_train-vision-proj-llm_cross-entropy_2025-10-20T22_29_37/checkpoint-1320

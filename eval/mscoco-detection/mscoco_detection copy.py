@@ -16,9 +16,8 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 import math
-from copy import deepcopy
-from sentence_transformers import SentenceTransformer,util
 from pycocotools.coco import COCO
+from copy import deepcopy
 
 def save_json(file_path, data):
     """
@@ -44,95 +43,15 @@ def load_json(file_path):
     with open(file_path, 'r') as f:
         return json.load(f)
 
-def bbox_absolute_to_relative(absolute_bbox, image_width_height):
-    width, height = image_width_height
-    x1 = absolute_bbox[0] / width
-    y1 = absolute_bbox[1] / height
-    x2 = absolute_bbox[2] / width
-    y2 = absolute_bbox[3] / height
-    relative_bbox = [x1, y1, x2, y2]
-    return relative_bbox
+def extract_bbox_from_text(ans):
+    pattern = re.compile(r'\[(((0|1)\.(\d){3}\,\s*){3}((0|1)\.(\d){3}))\]')
+    match_list = pattern.findall(ans)
 
-def bbox_relative_to_absolute(relative_bbox, image_width_height):
-    width, height = image_width_height
-    x1 = relative_bbox[0] * width
-    y1 = relative_bbox[1] * height
-    x2 = relative_bbox[2] * width
-    y2 = relative_bbox[3] * height
-    absolute_bbox = [x1, y1, x2, y2]
-    return absolute_bbox
-    
-def visualize_bbox(image, bbox_list, bbox_name_list,bbox_is_relative=True,with_id=False):
-    assert len(bbox_list) == len(bbox_name_list), "bbox_list and bbox_name_list must have the same length"
-    if isinstance(image, str):
-        image = Image.open(image).convert("RGB")
-
-    if bbox_is_relative:
-        # 画像のサイズを取得
-        image_width_height = (image.width, image.height)
-        # 相対座標を絶対座標に変換
-        bbox_list = [bbox_relative_to_absolute(bbox, image_width_height) for bbox in bbox_list]
-        
-    #bbox_name_listをソート、bbox_listも同じ順番にソート
-    # bbox_name_list, bbox_list = zip(*sorted(zip(bbox_name_list, bbox_list), key=lambda x: x[0]))
-    # bbox_name_list = list(bbox_name_list)
-    # bbox_list = list(bbox_list)
-    name_to_label_id_dict = {}
-    label_id = 0
-    for bbox_name in bbox_name_list:
-        if bbox_name not in name_to_label_id_dict:
-            name_to_label_id_dict[bbox_name] = label_id
-            label_id += 1    
-    
-    # bbox_listの座標をy1, x1, y2, x2の形式に変換
-    bboxes = []
-    labels = []
-    # label_id = -1
-    # old_label = None
-    count_object_dict = {}
-    id_bbox_name_list = []
-    for bbox ,bbox_name in zip(bbox_list, bbox_name_list):
-        x1, y1, x2, y2 = bbox
-        bboxes.append([y1, x1, y2, x2])
-        # if old_label != bbox_name:
-        #     label_id += 1
-        #     old_label = bbox_name
-        label_id = name_to_label_id_dict[bbox_name]
-        if bbox_name not in count_object_dict:
-            count_object_dict[bbox_name] = 0
-        else:
-            count_object_dict[bbox_name] += 1
-        if with_id:
-            bbox_name = f"{bbox_name}_{count_object_dict[bbox_name]}"
-            id_bbox_name_list.append(bbox_name)
-        labels.append(label_id)
-    # bboxes = np.array([bbox[1],bbox[0],bbox[3],bbox[2]]).astype(np.int32).reshape(-1, 4)
-    
-    base_resolution = 100 * 100
-    base_font_size = 3
-    image_resolution = image.width * image.height
-    font_size = int( base_font_size * (image_resolution / base_resolution) ** 0.5)
-    
-    if with_id:
-        bbox_name_list = id_bbox_name_list
-    image = imgviz.instances2rgb(np.array(image), bboxes=bboxes, labels=labels,font_size=font_size,captions=bbox_name_list)
-
-    plt.imshow(image)
-    plt.show()
-
-def sort_list_of_dicts(data, key, reverse=False):
-    """
-    Sort a list of dictionaries by the specified key.
-
-    Args:
-        data (list): List of dictionaries to sort.
-        key (str): Key to sort by.
-        reverse (bool): Sort in descending order if True, ascending if False.
-
-    Returns:
-        list: Sorted list of dictionaries.
-    """
-    return sorted(data, key=lambda x: x[key], reverse=reverse)
+    if len(match_list) > 0:
+        answer = [list(map(float,match[0].split(","))) for match in match_list]
+    else:
+        answer = "FAILED"
+    return answer
 
 def calculate_iou(gt_bbox_list, pred_bbox_list):
     iou_matrix = box_iou(torch.tensor(gt_bbox_list).float(), torch.tensor(pred_bbox_list).float())
@@ -175,33 +94,74 @@ def calculate_iou(gt_bbox_list, pred_bbox_list):
     
     return iou_info_list,iou_matrix,iou_argsort_matrix,pred_index_list, gt_index_list
 
+def sort_list_of_dicts(data, key, reverse=False):
+    """
+    Sort a list of dictionaries by the specified key.
+
+    Args:
+        data (list): List of dictionaries to sort.
+        key (str): Key to sort by.
+        reverse (bool): Sort in descending order if True, ascending if False.
+
+    Returns:
+        list: Sorted list of dictionaries.
+    """
+    return sorted(data, key=lambda x: x[key], reverse=reverse)
+
 def oc_cost(pred_instance_list,tgt_instance_list, alpha=0.5,beta=0.6):
     cmap_func = lambda x, y: get_cmap(x, y, alpha=alpha, beta=beta,label_or_sim="label")
     otc = get_ot_cost(pred_instance_list, tgt_instance_list, cmap_func)
     return otc
 
-def similariry_score(str1, str2, model: SentenceTransformer):
-    # compute embedding for both lists
-    embedding_1 = model.encode(str1, show_progress_bar=False)
-    embedding_2 = model.encode(str2, show_progress_bar=False)
-    score = util.pytorch_cos_sim(embedding_1, embedding_2).item()
+def create_images_for_coco(conversation_dataset, image_folder_root="/data_ssd"):
+    return_images = []
+    num_images = len(conversation_dataset)
     
-    #スコア丸め込み
-    # score = min(score, 1.0)
-    # score = max(score, 0.0)
+    for i in tqdm(range(num_images)):
+        image_name = conversation_dataset[i]["image"]
+        image_path = os.path.join(image_folder_root, image_name)
+        image = Image.open(image_path)
+        image_height = image.height
+        image_width = image.width
+        image_info = {
+            "id": i,
+            "width": image_width,
+            "height": image_height,
+            "file_name": image_name
+        }
+        return_images.append(image_info)
     
-    return score
+    return return_images
 
-def create_get_most_similar_category_func(category_list, sentence_transformer_model_path):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    similarity_model = SentenceTransformer(sentence_transformer_model_path).to(device)
-    category_embeddings = similarity_model.encode(category_list, show_progress_bar=False, convert_to_tensor=True)
-    def get_most_similar_category(category_name):
-        category_embedding = similarity_model.encode(category_name, show_progress_bar=False, convert_to_tensor=True)
-        scores = util.pytorch_cos_sim(category_embedding, category_embeddings).squeeze(0)
-        most_similar_index = torch.argmax(scores).item()
-        return category_list[most_similar_index], scores[most_similar_index].item(), scores
-    return get_most_similar_category
+def create_annotations_for_coco(conversation_dataset,categories,processor):
+    return_annotations = {}
+    
+    num_images = len(conversation_dataset)
+    
+    id_index = 0
+    for i in tqdm(range(num_images)):
+        caption, entities = processor.post_process_generation(conversation_dataset[i]["conversations"][1]["value"])
+        for name,_,bbox_list in entities:
+            for bbox in bbox_list:
+                annotation = {
+                    "id": id_index,
+                    "image_id": i,
+                    "category_id": categories[name] if name in categories else categories["unknown"],
+                    "bbox": [bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]],  # [x, y, width, height]
+                    "area": (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]),
+                    "iscrowd": 0,
+                    "score": 1.0,  # Assuming all annotations are perfect for dummy data
+                    "category_name": name,
+                    "bbox_xyxy": bbox,  # [x1, y1, x2, y2]
+                    "is_unknown": 1 if name not in categories else 0
+                }
+                
+                if i not in return_annotations:
+                    return_annotations[i] = []
+                return_annotations[i].append(annotation)
+                id_index += 1
+
+    return return_annotations
 
 def get_per_image_class_result_and_oc_cost(all_gt_annotations, all_pred_annotations, cat_name2id, iou_threshold=0.5):
     """
@@ -478,173 +438,8 @@ def get_mscoco2017_detection_cat_name2id(split="val"):
     #/data_ssd/mscoco2017/coco/annotations/instances_train2017.json
     coco_dataset = COCO(anno_path)
     cat_name2id = {c["name"]: c["id"] for c in coco_dataset.loadCats(coco_dataset.getCatIds())}
-    cat_id2name = {c["id"]: c["name"] for c in coco_dataset.loadCats(coco_dataset.getCatIds())}
 
-    return cat_name2id, cat_id2name
-
-def kosmos2_get_bbox_and_label(processor, text,*args, **kwargs):
-    _, entities = processor.post_process_generation(text)
-    bbox_list = [entity[-1] for entity in entities]
-    bbox_list = []
-    label_list = []
-    for entity in entities:
-        bbox_list.extend(entity[-1])
-        label_list.extend(entity[0] for _ in entity[-1])
-    return bbox_list, label_list
-
-def check_bbox_valid(bbox, box_w_h=[1, 1], min_bbox_size=1e-6):
-    x1, y1, x2, y2 = bbox
-    if x1 < 0 or y1 < 0 or x2 < 0 or y2 < 0:
-        return False
-    if x1 > box_w_h[0] or y1 > box_w_h[1] or x2 > box_w_h[0] or y2 > box_w_h[1]:
-        return False
-    if x1 >= x2 or y1 >= y2:
-        return False
-    bbox_area = (x2 - x1) * (y2 - y1)
-    if bbox_area < min_bbox_size:
-        return False
-    return True
-
-def parse_bbox_and_labels(processor, detokenizer_output: str):
-    # pattern = r"((<loc\d{4}>){4})[^;<]+|((<loc\d{4}>){4})$"
-    # matches = re.findall(pattern, detokenizer_output)
-    # print("matches", matches)
-    pattern = r"(((<loc\d{4}>){4})([^;<]+))"
-    matches = re.findall(pattern, detokenizer_output)
-    if len(matches) > 0 and matches[0][-1].strip() != "":
-        label_list = []
-        bbox_list = []
-        for m in matches:
-            y1, x1, y2, x2 = [int(x)/1024.0 for x in re.findall(r'\d+', m[1])]
-            if check_bbox_valid([x1, y1, x2, y2], box_w_h=[1, 1], min_bbox_size=1e-6):
-                bbox_list.append([x1, y1, x2, y2])
-                label_list.append(m[-1].strip())
-        return bbox_list, label_list
-
-    pattern = r"([^<]+)((<loc\d{4}>){4})"
-    matches = re.findall(pattern, detokenizer_output)
-    if len(matches) > 0:
-        label_pattern = r"^<image>detect\s([^<]+)<loc\d{4}>"
-        match = re.findall(label_pattern, detokenizer_output)
-        if len(match) > 0 and match[0].strip() != "":
-            label = match[0].strip()
-            bbox_list = []
-            for m in matches:
-                y1, x1, y2, x2 = [int(x)/1024.0 for x in re.findall(r'\d+', m[1])]
-                if check_bbox_valid([x1, y1, x2, y2], box_w_h=[1, 1], min_bbox_size=1e-6):
-                    bbox_list.append([x1, y1, x2, y2])
-            label_list = [label] * len(bbox_list)
-            return bbox_list, label_list
-    
-    return [], []
-
-
-def create_annotations_for_coco(conversation_dataset,categories,get_bbox_func,processor,delete_region_failure=False,unknown_to_similar=False,sentence_transformer_model_path=None):
-    if unknown_to_similar and not delete_region_failure:
-        raise ValueError("unknown_to_similar is True but delete_region_failure is False. This combination is not supported.")
-    elif unknown_to_similar and delete_region_failure:
-        get_most_similar_category = create_get_most_similar_category_func(
-            list(categories.keys()),
-            sentence_transformer_model_path
-        )
-    else:
-        get_most_similar_category = None
-
-    ann_id_converastaion_dict = {}
-    for i, conversation in enumerate(conversation_dataset):
-        if conversation["ann_id"] not in ann_id_converastaion_dict:
-            ann_id_converastaion_dict[conversation["ann_id"]] = []
-        ann_id_converastaion_dict[conversation["ann_id"]].append(i)
-        
-    return_annotations = {}
-    
-    ann_keys_list = ann_id_converastaion_dict.keys()
-
-    region_failure_count = 0
-    region_failure_delim_count = 0
-    name_failure_count = 0
-    name_failure_delim_count = 0
-    name_match_count = 0
-    name_match_delim_count = 0
-
-    id_index = 0
-    for i, ann_key in enumerate(tqdm(ann_keys_list)):
-        for conversation in ann_id_converastaion_dict[ann_key]:
-            text = ""
-            for conv in conversation_dataset[conversation]["conversations"]:
-                text += conv["value"]
-
-            ori_bbox_list,name_list = get_bbox_func(processor,text)
-            for name,bbox in zip(name_list,ori_bbox_list):
-                bbox_list = [bbox]
-                # import pdb;pdb.set_trace()
-                if "<patch_index" in name and delete_region_failure:
-                    #raise ValueError(f"Unexpected patch index in name: {name}")
-                    region_failure_count += 1
-                    region_failure_delim_count += len(bbox_list)
-                    continue
-                elif name not in categories.keys():    
-                    name_failure_count += 1
-                    name_failure_delim_count += len(bbox_list)
-                    if get_most_similar_category is not None:
-                        name, score, _ = get_most_similar_category(name)
-                else:
-                    name_match_count += 1
-                    name_match_delim_count += len(bbox_list)
-                    
-                for bbox in bbox_list:
-                    annotation = {
-                        "id": id_index,
-                        "image_id": i ,
-                        "category_id": categories[name] if name in categories else categories["unknown"],
-                        "bbox": [bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]],  # [x, y, width, height]
-                        "area": (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]),
-                        "iscrowd": 0,
-                        "score": 1.0,  # Assuming all annotations are perfect for dummy data
-                        "category_name": name,
-                        "bbox_xyxy": bbox,  # [x1, y1, x2, y2]
-                        "is_unknown": 1 if name not in categories else 0
-                    }
-                    
-                    if i not in return_annotations:
-                        return_annotations[i] = []
-                    return_annotations[i].append(annotation)
-                    id_index += 1
-
-    return_num_dict = {
-        "region_failure_count": region_failure_count,
-        "region_failure_delim_count": region_failure_delim_count,
-        "name_failure_count": name_failure_count,
-        "name_failure_delim_count": name_failure_delim_count,
-        "name_match_count": name_match_count,
-        "name_match_delim_count": name_match_delim_count
-    }
-    return return_annotations, return_num_dict
-
-def get_final_score(dataset_score, per_category_result_dict, all_gt_num_dict, all_pred_num_dict):
-    """
-    Calculate the final score for the dataset.
-
-    Args:
-        dataset_score (dict): Dataset score dictionary.
-        per_category_result_dict (dict): Per-category results.
-        all_gt_num_dict (dict): Ground truth number dictionary.
-        all_pred_num_dict (dict): Predicted number dictionary.
-
-    Returns:
-        dict: Final score dictionary.
-    """
-    dataset_score["per_category_result"] = per_category_result_dict
-    dataset_score["summary_data_num"].update(all_pred_num_dict)
-    dataset_score["summary_data_num"].update({"gt_name_count": all_gt_num_dict["name_match_count"],
-                                              "gt_name_delim_count": all_gt_num_dict["name_match_delim_count"]})
-    
-    print("-" * 50)
-    for key ,value in dataset_score["summary_data_num"].items():
-        print(f"{key}: {value}")
-    print("-" * 50)
-    print("End of dataset score")
-    return dataset_score
+    return cat_name2id
 
 def main(args):
     base_name = os.path.basename(__file__)
@@ -672,103 +467,36 @@ def main(args):
     for correct, generated in zip(correct_data, generated_data):
         assert correct["id"] == generated["id"], f"ID mismatch: {correct['id']} != {generated['id']}"
         
-    category_name2id,category_id2name = get_mscoco2017_detection_cat_name2id(split="val")
-    # category_name2id.update({"unknown": -1})
-    # category_id2name.update({-1: "unknown"})
-    if "kosmos-2" in args.model:
-        processor = AutoProcessor.from_pretrained("/data_ssd/huggingface_model_weights/microsoft/kosmos-2-patch14-224")
-        get_bbox_func = kosmos2_get_bbox_and_label
-    elif "paligemma" in args.model:
-        processor = None
-        get_bbox_func = parse_bbox_and_labels
-    else:
-        raise ValueError(f"Unknown model: {args.model}")
+    cat_name2id = get_mscoco2017_detection_cat_name2id(split="val")
+    cat_name2id.update({"unknown": -1})
+    category_id2name = {v: k for k, v in cat_name2id.items()}
+    processor = AutoProcessor.from_pretrained("/data_ssd/huggingface_model_weights/microsoft/kosmos-2-patch14-224")
     
     # images = create_images_for_coco(correct_data, args.image_folder_root)
-    all_gt_annotations, all_gt_num_dict = create_annotations_for_coco(correct_data, category_name2id,get_bbox_func, processor)
-    all_pred_annotations, all_pred_num_dict = create_annotations_for_coco(generated_data, category_name2id, get_bbox_func,processor,
-            delete_region_failure=True, unknown_to_similar=True, sentence_transformer_model_path=args.sentence_transformer_model_path)
-    per_image_result_dict, oc_cost_list = get_per_image_class_result_and_oc_cost(all_gt_annotations, all_pred_annotations, category_name2id, iou_threshold=args.iou_threshold)
+    all_gt_annotations = create_annotations_for_coco(correct_data, cat_name2id, processor)
+    all_pred_annotations = create_annotations_for_coco(generated_data, cat_name2id, processor)
+    per_image_result_dict, oc_cost_list = get_per_image_class_result_and_oc_cost(all_gt_annotations, all_pred_annotations, cat_name2id, iou_threshold=args.iou_threshold)
     per_category_result_dict = convert_per_class_result_dict(per_image_result_dict)
     
-    per_category_result_dict,dataset_score = calculate_score(per_category_result_dict, oc_cost_list,category_id2name)
-    final_score = get_final_score(dataset_score, per_category_result_dict, all_gt_num_dict, all_pred_num_dict)
-    final_score.update({"filename": args.generated_json,
+    _,output_data = calculate_score(per_category_result_dict, oc_cost_list,category_id2name)
+    output_data.update({"filename": args.generated_json,
                         "correct_json": args.gt_json,
                         "timestamp": current_date})
+    
     print(f"Saving sorted JSON data to \"{output_path}\"...")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
      # Save the output data to the specified output path
-    save_json(output_path, final_score)
-    
-def main(args):
-    base_name = os.path.basename(__file__)
-    current_date = datetime.datetime.now().strftime('%Y-%m-%dT%H_%M_%S')
-    
-    
-    if args.output_path is None:
-        generated_json_folder = os.path.dirname(args.generated_json)
-        output_path = os.path.join(generated_json_folder,f"{base_name.split('.')[0]}.json")
-    else:
-        output_path = args.output_path
-    
-    print("Loading JSON data...")
-    correct_json_path = args.gt_json
-    correct_data = load_json(correct_json_path)
-
-    generated_json_path = args.generated_json
-    generated_data = load_json(generated_json_path)
-
-    assert len(correct_data) == len(generated_data), "Length of correct and generated data does not match."
-
-    correct_data = sort_list_of_dicts(correct_data, "id")
-    generated_data = sort_list_of_dicts(generated_data, "id")
-
-    for correct, generated in zip(correct_data, generated_data):
-        assert correct["id"] == generated["id"], f"ID mismatch: {correct['id']} != {generated['id']}"
-        
-    category_name2id,category_id2name = get_mscoco2017_detection_cat_name2id(split="val")
-    # cat_name2id.update({"unknown": -1})
-    # category_id2name = {v: k for k, v in cat_name2id.items()}
-    if "kosmos-2" in args.model:
-        processor = AutoProcessor.from_pretrained("/data_ssd/huggingface_model_weights/microsoft/kosmos-2-patch14-224")
-        get_bbox_func = kosmos2_get_bbox_and_label
-    elif "paligemma" in args.model:
-        processor = None
-        get_bbox_func = parse_bbox_and_labels
-    else:
-        raise ValueError(f"Unknown model: {args.model}")
-    
-    # images = create_images_for_coco(correct_data, args.image_folder_root)
-    all_gt_annotations, all_gt_num_dict = create_annotations_for_coco(correct_data, category_name2id,get_bbox_func, processor)
-    all_pred_annotations, all_pred_num_dict = create_annotations_for_coco(generated_data, category_name2id, get_bbox_func,processor,
-            delete_region_failure=True, unknown_to_similar=True, sentence_transformer_model_path=args.sentence_transformer_model_path)
-    per_image_result_dict, oc_cost_list = get_per_image_class_result_and_oc_cost(all_gt_annotations, all_pred_annotations, category_name2id, iou_threshold=args.iou_threshold)
-    per_category_result_dict = convert_per_class_result_dict(per_image_result_dict)
-    
-    
-    per_category_result_dict,dataset_score = calculate_score(per_category_result_dict, oc_cost_list,category_id2name)
-    final_score = get_final_score(dataset_score, per_category_result_dict, all_gt_num_dict, all_pred_num_dict)
-    final_score.update({"filename": args.generated_json,
-                        "correct_json": args.gt_json,
-                        "timestamp": current_date})
-    print(f"Saving sorted JSON data to \"{output_path}\"...")
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-     # Save the output data to the specified output path
-    save_json(output_path, final_score)
+    save_json(output_path, output_data)
 
 if __name__ == "__main__":
     
-    gt_json_path = "/data_ssd/mscoco-detection/paligemma_actual_detection/val_mscoco2017_actual_detection_for_paligemma_sort_size_cat_size.json"
+    gt_json_path = "/data_ssd/mscoco-detection/val_for-kosmos2_mscoco2017-detection.json"
 
     parser = argparse.ArgumentParser(description="Utility functions for JSON handling and sorting.")
     parser.add_argument("-json","--generated_json", type=str, help='Path to the generated JSON file to load or save.')
     parser.add_argument("-gt","--gt_json", type=str, help='Path to the ground truth JSON file to load for sorting.', default=gt_json_path)
     parser.add_argument("--output_path", type=str, help='Path to save the sorted JSON file.',default=None)
     parser.add_argument("--iou_threshold", type=float, default=0.5, help="IOU threshold for true positives.")
-    parser.add_argument("--sentence_transformer_model_path", type=str, default="/data_ssd/huggingface_model_weights/sentence-transformers/all-MiniLM-L6-v2",
-                        help="Path to the SentenceTransformer model for similarity scoring.")
-    parser.add_argument("--model", type=str, help='model-name',default="kosmos-2-patch14-224")
     # parser.add_argument("--image_folder_root", type=str, default="/data_ssd", help="Root folder for images.")
     args = parser.parse_args()
     main(args)

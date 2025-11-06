@@ -107,7 +107,8 @@ def main(args):
             join_path_list = [model_path, "eval_output",dataset_base_name, "*", f"{script_base_name}.json"]
         
         print(f"Looking for score files in: {os.path.join(*join_path_list)}")
-        score_path = glob.glob(os.path.join(*join_path_list),recursive=True)[-1]
+        score_path = sorted(glob.glob(os.path.join(*join_path_list),recursive=True))[-1]
+        print(f"Found score file: {score_path}")
         if not os.path.exists(score_path):
             print(f"No score files found for {dataset_script_name}.")
             return
