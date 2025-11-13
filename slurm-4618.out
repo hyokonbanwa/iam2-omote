@@ -1,0 +1,12 @@
+INFO:    Instance stats will not be available - system configuration does not support cgroup management.
+INFO:    instance started successfully
+********************************************************************
+Starting sshd in Slurm as user
+Environment information:
+Date: 2025年 11月 12日 水曜日 17:35:39 JST
+Allocated node: a100-40gbx4-01
+Node IP: 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000 2: eno1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000 inet 10.151.0.4/16 brd 10.151.255.255 scope global eno1 3: enxb03af2b6059f: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000 4: eno2: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000 inet 10.152.0.4/16 brd 10.152.255.255 scope global ibp225s0 10: vetheafc743@if9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-43e4f292bfeb state UP group default
+Path: /home/omote/cluster_project/iam2
+Listening on: 43022
+********************************************************************
+slurmstepd: error: *** JOB 4618 ON a100-40gbx4-01 CANCELLED AT 2025-11-13T05:35:42 DUE TO TIME LIMIT ***

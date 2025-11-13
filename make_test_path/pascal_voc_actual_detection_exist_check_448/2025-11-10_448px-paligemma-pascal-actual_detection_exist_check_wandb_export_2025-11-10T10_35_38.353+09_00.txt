@@ -1,0 +1,10 @@
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check-448px/448px_size_aligned_train-vision-proj-llm_cedfl_excepted_combine_ce_2025-11-01T13_53_26/checkpoint-1320
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check-448px/448px_size_aligned_train-vision-proj-llm_cedfl_excepted_split_ce_2025-11-01T16_09_45/checkpoint-2200
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check-448px/448px_size_aligned_train-vision-proj-llm_cedfl_excepted2_split_ce_2025-11-01T23_01_17/checkpoint-1540
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check-448px/448px_size_aligned_train-vision-proj-llm_ce_excepted_dfl_2025-11-01T11_35_42/checkpoint-1540
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check-448px/448px_size_aligned_train-vision-proj-llm_cross-entropy_2025-11-01T09_21_50/checkpoint-1540
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check-448px/448px_size_aligned_train-vision-proj-llm_ce_excepted2_dfl_2025-11-01T18_25_37/checkpoint-2090
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check-448px/448px_size_aligned_train-vision-proj-llm_cedfl_excepted5_split_ce_2025-11-02T06_01_20/checkpoint-1980
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check-448px/448px_size_aligned_train-vision-proj-llm_cedfl_excepted2_combine_ce_2025-11-01T20_42_39/checkpoint-1980
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check-448px/448px_size_aligned_train-vision-proj-llm_ce_excepted5_dfl_2025-11-02T01_17_59/checkpoint-2200
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check-448px/448px_size_aligned_train-vision-proj-llm_cedfl_excepted5_combine_ce_2025-11-02T03_39_10/checkpoint-1980

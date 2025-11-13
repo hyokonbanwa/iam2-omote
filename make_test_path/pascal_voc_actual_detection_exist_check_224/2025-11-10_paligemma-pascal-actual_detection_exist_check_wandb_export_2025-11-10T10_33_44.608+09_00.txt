@@ -1,0 +1,10 @@
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check/size_aligned_train-vision-proj-llm_cedfl_excepted_combine_ce_2025-10-31T03_41_56/checkpoint-1272
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check/size_aligned_train-vision-proj-llm_cedfl_excepted5_split_ce_2025-10-31T09_58_05/checkpoint-1272
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check/size_aligned_train-vision-proj-llm_ce_excepted5_dfl_2025-10-31T08_10_51/checkpoint-1378
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check/size_aligned_train-vision-proj-llm_ce_excepted_dfl_2025-10-31T02_47_52/checkpoint-954
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check/size_aligned_train-vision-proj-llm_cedfl_excepted2_split_ce_2025-10-31T07_16_59/checkpoint-1060
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check/size_aligned_train-vision-proj-llm_ce_excepted2_dfl_2025-10-31T05_29_25/checkpoint-1272
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check/size_aligned_train-vision-proj-llm_cedfl_excepted_split_ce_2025-10-31T04_35_21/checkpoint-1272
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check/size_aligned_train-vision-proj-llm_cedfl_excepted2_combine_ce_2025-10-31T06_23_13/checkpoint-1802
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check/size_aligned_train-vision-proj-llm_cross-entropy_2025-10-31T01_54_09/checkpoint-954
+/home/omote/omote-data-ssd/iam-llms-finetune/experiment_output/paligemma_pascalvoc-actual-detection-exist-check/size_aligned_train-vision-proj-llm_cedfl_excepted5_combine_ce_2025-10-31T09_04_13/checkpoint-1696

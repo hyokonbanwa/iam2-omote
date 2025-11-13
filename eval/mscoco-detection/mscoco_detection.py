@@ -552,9 +552,9 @@ def create_annotations_for_coco(conversation_dataset,categories,get_bbox_func,pr
 
     ann_id_converastaion_dict = {}
     for i, conversation in enumerate(conversation_dataset):
-        if conversation["ann_id"] not in ann_id_converastaion_dict:
-            ann_id_converastaion_dict[conversation["ann_id"]] = []
-        ann_id_converastaion_dict[conversation["ann_id"]].append(i)
+        if conversation["anno_id"] not in ann_id_converastaion_dict:
+            ann_id_converastaion_dict[conversation["anno_id"]] = []
+        ann_id_converastaion_dict[conversation["anno_id"]].append(i)
         
     return_annotations = {}
     
